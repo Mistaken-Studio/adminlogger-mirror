@@ -20,7 +20,7 @@ namespace Mistaken.AdminLogger
         public override string Name => "AdminLogger";
 
         /// <inheritdoc/>
-        public override string Prefix => "MAL";
+        public override string Prefix => "MALOGGER";
 
         /// <inheritdoc/>
         public override PluginPriority Priority => PluginPriority.Lowest;
@@ -31,8 +31,6 @@ namespace Mistaken.AdminLogger
         /// <inheritdoc/>
         public override void OnEnabled()
         {
-            Instance = this;
-
             new LoggerHandler(this);
 
             API.Diagnostics.Module.OnEnable(this);
@@ -47,7 +45,5 @@ namespace Mistaken.AdminLogger
 
             base.OnDisabled();
         }
-
-        internal static PluginHandler Instance { get; private set; }
     }
 }

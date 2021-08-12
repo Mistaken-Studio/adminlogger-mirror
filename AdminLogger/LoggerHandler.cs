@@ -6,7 +6,6 @@
 
 using System;
 using System.Linq;
-using System.Net;
 using Exiled.API.Features;
 using Exiled.API.Interfaces;
 using Mistaken.API;
@@ -181,7 +180,7 @@ namespace Mistaken.AdminLogger
                         SendCommand(ev.Name.ToLower(), string.Empty, ev, "0");
                     else
                     {
-                        Player player = Player.Get(ev.Arguments[0]);
+                        Player player = RealPlayers.Get(ev.Arguments[0]);
                         SendCommand(ev.Name.ToLower(), "None", ev, player?.UserId);
                     }
 
