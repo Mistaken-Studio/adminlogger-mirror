@@ -42,12 +42,16 @@ namespace Mistaken.AdminLogger
         public override void OnEnable()
         {
             Exiled.Events.Handlers.Server.SendingRemoteAdminCommand += this.Handle<Exiled.Events.EventArgs.SendingRemoteAdminCommandEventArgs>((ev) => this.Server_SendingRemoteAdminCommand(ev));
+            Exiled.Events.Handlers.Player.Banning += this.Handle<Exiled.Events.EventArgs.BanningEventArgs>((ev) => this.Player_Banning(ev));
+            Exiled.Events.Handlers.Player.Kicking += this.Handle<Exiled.Events.EventArgs.KickingEventArgs>((ev) => this.Player_Kicking(ev));
         }
 
         /// <inheritdoc/>
         public override void OnDisable()
         {
             Exiled.Events.Handlers.Server.SendingRemoteAdminCommand -= this.Handle<Exiled.Events.EventArgs.SendingRemoteAdminCommandEventArgs>((ev) => this.Server_SendingRemoteAdminCommand(ev));
+            Exiled.Events.Handlers.Player.Banning -= this.Handle<Exiled.Events.EventArgs.BanningEventArgs>((ev) => this.Player_Banning(ev));
+            Exiled.Events.Handlers.Player.Kicking -= this.Handle<Exiled.Events.EventArgs.KickingEventArgs>((ev) => this.Player_Kicking(ev));
         }
 
         internal static void SendCommand(string command, string arg, Exiled.Events.EventArgs.SendingRemoteAdminCommandEventArgs ev, string userId)
@@ -55,6 +59,87 @@ namespace Mistaken.AdminLogger
             if (ev.Sender == null)
                 return;
             APILib.API.SendLogs(ev.Sender.UserId, userId, command, arg, ServerConsole.Ip, Server.Port.ToString());
+        }
+
+        private void Player_Kicking(Exiled.Events.EventArgs.KickingEventArgs ev)
+        {
+            this.Player_Banning(new Exiled.Events.EventArgs.BanningEventArgs(ev.Target, ev.Issuer, 0, ev.Reason, ev.FullMessage, ev.IsAllowed));
+        }
+
+        private void Player_Banning(Exiled.Events.EventArgs.BanningEventArgs ev)
+        {
+            if (!ev.IsAllowed)
+                return;
+
+            var duration = ev.Duration;
+            duration /= 60;
+            var reason = ev.Reason == string.Empty ? "removeme" : ev.Reason.Trim();
+
+            string textDuration = "KICK";
+            if (duration != 0)
+            {
+                int displayDuration = duration;
+                string displayDurationType = "minute";
+                if (displayDuration % 60 == 0)
+                {
+                    displayDuration /= 60;
+                    if (displayDuration % 24 == 0)
+                    {
+                        displayDuration /= 24;
+                        if (displayDuration % 365 == 0)
+                        {
+                            displayDuration /= 365;
+                            displayDurationType = "year";
+                        }
+                        else if (displayDuration % 30 == 0)
+                        {
+                            displayDuration /= 30;
+                            displayDurationType = "month";
+                        }
+                        else
+                            displayDurationType = "day";
+                    }
+                    else
+                        displayDurationType = "hour";
+                }
+
+                textDuration = $"{displayDuration} {displayDurationType}" + (displayDuration == 1 ? string.Empty : "s");
+            }
+
+            if (reason.ToUpper().StartsWith("W:") || reason.ToUpper().StartsWith("R:"))
+            {
+                string issuer = reason.ToUpper().StartsWith("W:") ? "Wanted Bans System" : "Remote Bans System";
+                string message = $"({ev.Target.Id}) {ev.Target.Nickname} has been banned for \"{reason}\" for {textDuration} by (?) {issuer}";
+                MapPlus.Broadcast("BAN", 10, message, Broadcast.BroadcastFlags.AdminChat);
+                return;
+            }
+
+            try
+            {
+                string[] tmp = reason.Split(']');
+                if (tmp.Length > 1)
+                    reason = tmp[1].Trim();
+            }
+            catch (Exception e)
+            {
+                this.Log.Warn("Exception when triming reason");
+                this.Log.Warn(e.Message);
+                this.Log.Warn(e.StackTrace);
+            }
+
+            if (reason.ToUpper().StartsWith("TK:"))
+            {
+                ev.FullMessage = ev.Reason;
+
+                if (duration == 0)
+                    MapPlus.Broadcast("BAN", 10, $"{ev.Target.Nickname} został wyrzucony za Zabijanie Sojuszników przez Anty TeamKill System", Broadcast.BroadcastFlags.Normal);
+                else
+                    MapPlus.Broadcast("BAN", 10, $"{ev.Target.Nickname} został zbanowany za Zabijanie Sojuszników na {textDuration} przez Anty TeamKill System", Broadcast.BroadcastFlags.Normal);
+            }
+            else
+                MapPlus.Broadcast("BAN", 10, $"({ev.Target.Id}) {ev.Target.Nickname} has been banned for \"{reason}\" for {textDuration} by ({ev.Issuer.Id}) {ev.Issuer.Nickname}", Broadcast.BroadcastFlags.AdminChat);
+
+            APILib.API.SendBan(ev.Target.UserId, ev.Issuer.UserId, reason, ev.Duration, Server.IpAddress, Server.Port.ToString());
         }
 
         private void Server_SendingRemoteAdminCommand(Exiled.Events.EventArgs.SendingRemoteAdminCommandEventArgs ev)
