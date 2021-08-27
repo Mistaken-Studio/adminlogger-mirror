@@ -7,6 +7,7 @@
 using System;
 using Exiled.API.Enums;
 using Exiled.API.Features;
+using HarmonyLib;
 
 namespace Mistaken.AdminLogger
 {
@@ -26,14 +27,16 @@ namespace Mistaken.AdminLogger
         public override PluginPriority Priority => PluginPriority.Lowest;
 
         /// <inheritdoc/>
-        public override Version RequiredExiledVersion => new Version(2, 11, 0);
+        public override Version RequiredExiledVersion => new Version(3, 0, 0, 57);
 
         /// <inheritdoc/>
         public override void OnEnabled()
         {
-            new LoggerHandler(this);
+            Instance = this;
 
-            API.Diagnostics.Module.OnEnable(this);
+            var harmony = new Harmony("mistaken.logger");
+            harmony.PatchAll();
+            // harmony.Patch(Exiled.Events.Events.Instance.Assembly.GetType("CommandLogging").GetMethod("LogCommand", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static), new HarmonyMethod(typeof(CommandLoggingPatch).GetMethod(nameof(CommandLoggingPatch.Prefix))));
 
             base.OnEnabled();
         }
@@ -41,9 +44,9 @@ namespace Mistaken.AdminLogger
         /// <inheritdoc/>
         public override void OnDisabled()
         {
-            API.Diagnostics.Module.OnDisable(this);
-
             base.OnDisabled();
         }
+
+        internal static PluginHandler Instance { get; private set; }
     }
 }
