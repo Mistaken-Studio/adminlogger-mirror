@@ -27,7 +27,7 @@ namespace Mistaken.AdminLogger
         public override PluginPriority Priority => PluginPriority.Lowest;
 
         /// <inheritdoc/>
-        public override Version RequiredExiledVersion => new Version(3, 0, 0, 57);
+        public override Version RequiredExiledVersion => new Version(3, 0, 3);
 
         /// <inheritdoc/>
         public override void OnEnabled()
@@ -36,8 +36,8 @@ namespace Mistaken.AdminLogger
 
             var harmony = new Harmony("mistaken.logger");
             harmony.PatchAll();
-            // harmony.Patch(Exiled.Events.Events.Instance.Assembly.GetType("CommandLogging").GetMethod("LogCommand", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static), new HarmonyMethod(typeof(CommandLoggingPatch).GetMethod(nameof(CommandLoggingPatch.Prefix))));
 
+            // harmony.Patch(Exiled.Events.Events.Instance.Assembly.GetType("CommandLogging").GetMethod("LogCommand", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static), new HarmonyMethod(typeof(CommandLoggingPatch).GetMethod(nameof(CommandLoggingPatch.Prefix))));
             base.OnEnabled();
         }
 

@@ -1,4 +1,10 @@
-﻿using System;
+﻿// -----------------------------------------------------------------------
+// <copyright file="CommandLoggingPatch.cs" company="Mistaken">
+// Copyright (c) Mistaken. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
@@ -49,7 +55,7 @@ namespace Mistaken.AdminLogger
                     embed
                         .WithAuthor(command == "AdminChat" ? "AdminChat" : $"Command: {command}", null, null, null)
                         .WithColor(255, 0, 0)
-                        .WithField("User", userString == null ? adminString : userString, true)
+                        .WithField("User", userString ?? adminString, true)
                         .WithField("Admin", adminString, true)
                         .WithField("Server", $"{Server.IpAddress}:{Server.Port}", true)
                         .WithField("Arg", arg)
@@ -57,10 +63,11 @@ namespace Mistaken.AdminLogger
                     ;
                 })).Send();
             Exiled.API.Features.Log.Debug(response, PluginHandler.Instance.Config.VerbouseOutput);
+
             // APILib.API.SendLogs(sernderPlayer.UserId, userId, command, arg, ServerConsole.Ip, Server.Port.ToString());
         }
 
-        public static void Prefix(string q, CommandSender sender)
+        internal static void Prefix(string q, CommandSender sender)
         {
             string[] args = q.Split(' ');
             string command = args.First();
