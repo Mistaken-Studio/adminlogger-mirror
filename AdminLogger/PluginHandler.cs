@@ -29,7 +29,7 @@ namespace Mistaken.AdminLogger
         public override PluginPriority Priority => PluginPriority.Lowest;
 
         /// <inheritdoc/>
-        public override Version RequiredExiledVersion => new Version(4, 1, 2);
+        public override Version RequiredExiledVersion => new Version(5, 0, 0);
 
         /// <inheritdoc/>
         public override void OnEnabled()
@@ -56,7 +56,7 @@ namespace Mistaken.AdminLogger
 
             // args = args.Skip(1).ToArray();
             Player senderPlayer = ev.Admin;
-
+            Log.Debug("CustomEvents_SendingCommand", PluginHandler.Instance.Config.VerbouseOutput);
             if (string.IsNullOrWhiteSpace(command))
                 return;
 
