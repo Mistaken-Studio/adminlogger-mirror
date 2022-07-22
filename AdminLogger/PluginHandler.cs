@@ -113,10 +113,6 @@ namespace Mistaken.AdminLogger
                 case "tpall":
                 case "bring":
                 case "heal":
-                case "iunmute":
-                case "unmute":
-                case "imute":
-                case "mute":
                     {
                         if (args.Length == 0)
                             break;
@@ -242,10 +238,10 @@ namespace Mistaken.AdminLogger
                     embed
                         .WithAuthor(command == "AdminChat" ? "AdminChat" : $"Command: {command}", null, null, null)
                         .WithColor(255, 0, 0)
-                        .WithField("User", userString ?? adminString, true)
-                        .WithField("Admin", adminString, true)
+                        .WithField("User", string.IsNullOrWhiteSpace(userString ?? adminString) ? "ADMIN IS NULL" : (userString ?? adminString), true)
+                        .WithField("Admin", string.IsNullOrWhiteSpace(adminString) ? "ADMIN IS NULL" : adminString, true)
                         .WithField("Server", $"{Server.IpAddress}:{Server.Port}", true)
-                        .WithField("Arg", arg)
+                        .WithField("Arg", string.IsNullOrWhiteSpace(arg) ? "NO ARGS" : arg)
                         .WithCurrentTimestamp()
                     ;
                 })).Send();
