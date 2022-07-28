@@ -9,6 +9,7 @@ using System.Linq;
 using Discord_Webhook;
 using Exiled.API.Enums;
 using Exiled.API.Features;
+using Exiled.Events.EventArgs;
 using Mistaken.API;
 
 namespace Mistaken.AdminLogger
@@ -37,6 +38,7 @@ namespace Mistaken.AdminLogger
             Instance = this;
 
             Mistaken.Events.Handlers.CustomEvents.SendingCommand += this.CustomEvents_SendingCommand;
+            Exiled.Events.Handlers.Server.ReportingCheater += this.LogReport;
             base.OnEnabled();
         }
 
@@ -44,6 +46,7 @@ namespace Mistaken.AdminLogger
         public override void OnDisabled()
         {
             Mistaken.Events.Handlers.CustomEvents.SendingCommand -= this.CustomEvents_SendingCommand;
+            Exiled.Events.Handlers.Server.ReportingCheater -= this.LogReport;
             base.OnDisabled();
         }
 
@@ -211,9 +214,9 @@ namespace Mistaken.AdminLogger
                 return;
             string adminString;
             if (sender.AuthenticationType == Exiled.API.Enums.AuthenticationType.Steam)
-                adminString = $"[{sender.Nickname}](https://steamcommunity.com/profiles/{sender.UserId.Split('@')[0]})";
+                adminString = $"[{sender.Nickname}](https://steamcommunity.com/profiles/{sender.UserId.Split('@')[0]}) ({sender.UserId})";
             else if (sender.AuthenticationType == Exiled.API.Enums.AuthenticationType.Discord)
-                adminString = $"{sender.Nickname} (<@{sender.UserId.Split('@')[0]}>)";
+                adminString = $"{sender.Nickname} (<@{sender.UserId.Split('@')[0]}>) ({sender.UserId})";
             else
                 adminString = sender.UserId;
 
@@ -221,9 +224,9 @@ namespace Mistaken.AdminLogger
             if (user != null)
             {
                 if (user.AuthenticationType == Exiled.API.Enums.AuthenticationType.Steam)
-                    userString = $"[{user.Nickname}](https://steamcommunity.com/profiles/{user.UserId.Split('@')[0]})";
+                    userString = $"[{user.Nickname}](https://steamcommunity.com/profiles/{user.UserId.Split('@')[0]}) ({user.UserId})";
                 else if (user.AuthenticationType == Exiled.API.Enums.AuthenticationType.Discord)
-                    userString = $"{user.Nickname} (<@{user.UserId.Split('@')[0]}>)";
+                    userString = $"{user.Nickname} (<@{user.UserId.Split('@')[0]}>) ({user.UserId})";
                 else
                     userString = user.UserId;
             }
@@ -246,8 +249,46 @@ namespace Mistaken.AdminLogger
                     ;
                 })).Send();
             Exiled.API.Features.Log.Debug(response, PluginHandler.Instance.Config.VerbouseOutput);
+        }
 
-            // APILib.API.SendLogs(sernderPlayer.UserId, userId, command, arg, ServerConsole.Ip, Server.Port.ToString());
+        private async void LogReport(ReportingCheaterEventArgs ev)
+        {
+            if (!ev.IsAllowed)
+                return;
+            string issuerString;
+            if (ev.Issuer.AuthenticationType == Exiled.API.Enums.AuthenticationType.Steam)
+                issuerString = $"[{ev.Issuer.Nickname}](https://steamcommunity.com/profiles/{ev.Issuer.UserId.Split('@')[0]}) ({ev.Issuer.UserId})";
+            else if (ev.Issuer.AuthenticationType == Exiled.API.Enums.AuthenticationType.Discord)
+                issuerString = $"{ev.Issuer.Nickname} (<@{ev.Issuer.UserId.Split('@')[0]}>) ({ev.Issuer.UserId})";
+            else
+                issuerString = ev.Issuer.UserId;
+
+            string reportedString = null;
+            if (ev.Target.AuthenticationType == Exiled.API.Enums.AuthenticationType.Steam)
+                reportedString = $"[{ev.Target.Nickname}](https://steamcommunity.com/profiles/{ev.Target.UserId.Split('@')[0]}) ({ev.Target.UserId})";
+            else if (ev.Target.AuthenticationType == Exiled.API.Enums.AuthenticationType.Discord)
+                reportedString = $"{ev.Target.Nickname} (<@{ev.Target.UserId.Split('@')[0]}>) ({ev.Target.UserId})";
+            else
+                reportedString = ev.Target.UserId;
+
+            var response = await new Webhook(PluginHandler.Instance.Config.ReportWebhookLink)
+                .AddMessage((msg) =>
+                msg
+                .WithAvatar(PluginHandler.Instance.Config.ReportWebhookAvatar)
+                .WithUsername(PluginHandler.Instance.Config.ReportWebhookUsername)
+                .WithEmbed(embed =>
+                {
+                    embed
+                        .WithAuthor("CHEATER REPORT", null, null, null)
+                        .WithColor(255, 0, 0)
+                        .WithField("Issuer", issuerString, true)
+                        .WithField("Reported", reportedString, true)
+                        .WithField("Server", $"{Server.IpAddress}:{ev.ServerPort}", true)
+                        .WithField("Reason", ev.Reason)
+                        .WithCurrentTimestamp()
+                    ;
+                })).Send();
+            Exiled.API.Features.Log.Debug(response, PluginHandler.Instance.Config.VerbouseOutput);
         }
     }
 }

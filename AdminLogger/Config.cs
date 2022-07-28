@@ -27,6 +27,12 @@ namespace Mistaken.AdminLogger
 
         public string WebhookAvatar { get; set; } = null;
 
+        public string ReportWebhookLink { get; set; } = null;
+
+        public string ReportWebhookUsername { get; set; } = null;
+
+        public string ReportWebhookAvatar { get; set; } = null;
+
         /// <inheritdoc/>
         [Description("Auto Update Settings")]
         public System.Collections.Generic.Dictionary<string, string> AutoUpdateConfig { get; set; } = new System.Collections.Generic.Dictionary<string, string>
