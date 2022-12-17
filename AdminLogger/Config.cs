@@ -4,22 +4,11 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-using System.ComponentModel;
-using Mistaken.Updater.Config;
-
 namespace Mistaken.AdminLogger
 {
-    /// <inheritdoc/>
-    internal class Config : IAutoUpdatableConfig
+    internal sealed class Config
     {
-        /// <inheritdoc/>
-        public bool IsEnabled { get; set; } = true;
-
-        /// <summary>
-        /// Gets or sets a value indicating whether debug should be displayed.
-        /// </summary>
-        [Description("If true then debug will be displayed")]
-        public bool VerbouseOutput { get; set; }
+        public bool VerboseOutput { get; set; } = false;
 
         public string WebhookLink { get; set; } = null;
 
@@ -32,15 +21,5 @@ namespace Mistaken.AdminLogger
         public string ReportWebhookUsername { get; set; } = null;
 
         public string ReportWebhookAvatar { get; set; } = null;
-
-        /// <inheritdoc/>
-        [Description("Auto Update Settings")]
-        public System.Collections.Generic.Dictionary<string, string> AutoUpdateConfig { get; set; } = new System.Collections.Generic.Dictionary<string, string>
-        {
-            { "Url", "https://git.mistaken.pl/api/v4/projects/28" },
-            { "Token", string.Empty },
-            { "Type", "GITLAB" },
-            { "VerbouseOutput", "false" },
-        };
     }
 }
