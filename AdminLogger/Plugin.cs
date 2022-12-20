@@ -4,8 +4,10 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+using System;
 using System.Linq;
 using Discord_Webhook;
+using HarmonyLib;
 using PlayerRoles;
 using PluginAPI.Core;
 using PluginAPI.Core.Attributes;
@@ -16,28 +18,36 @@ namespace Mistaken.AdminLogger
 {
     internal sealed class Plugin
     {
+        public static Plugin Instance { get; private set; }
+
         [PluginConfig]
+#pragma warning disable SA1401 // Fields should be private
         public Config Config;
+#pragma warning restore SA1401 // Fields should be private
+
+        private static readonly Harmony _harmony = new("mistaken.adminlogger.patch");
 
         [PluginPriority(LoadPriority.Lowest)]
         [PluginEntryPoint("Admin Logger", "1.0.0", "Admin Logger", "Mistaken Devs")]
-        public void Initialize()
+        private void Load()
         {
             Instance = this;
             EventManager.RegisterEvents(this);
-            Log.Debug(this.Config.WebhookLink);
+            _harmony.PatchAll();
         }
 
-        internal static Plugin Instance { get; private set; }
+        [PluginUnload]
+        private void Unload()
+        {
+            _harmony.UnpatchAll();
+        }
 
-        private static string FormatUserId(Player player)
+        private string FormatUserId(Player player)
         {
             if (player is null)
-                return string.Empty;
+                return "NONE";
 
             var split = player.UserId.Split('@');
-            Log.Debug(split[0]);
-            Log.Debug(split[1]);
 
             if (split[1] == "steam")
                 return $"[{player.Nickname}](https://steamcommunity.com/profiles/{split[0]}) ({player.UserId})";
@@ -47,59 +57,28 @@ namespace Mistaken.AdminLogger
                 return player.UserId;
         }
 
+        private void OnPlayerAdminChat(Player player, string query)
+        {
+            Log.Debug(query, Config.VerboseOutput);
+            ProcessCommand(player, query, Array.Empty<string>());
+        }
+
         [PluginEvent(ServerEventType.PlayerRemoteAdminCommand)]
-        private void OnPlayerRemoteadminCommand(Player player, string command, string[] arguments)
+        private void OnPlayerRemoteAdminCommand(Player player, string command, string[] arguments)
         {
-            Log.Info($"Player {player.Nickname} ({player.UserId}) used command {command}{(arguments.Length != 0 ? $" with arguments {string.Join(", ", arguments)}" : string.Empty)}");
-            this.ProcessCommand(player, command, arguments);
-        }
-
-        [PluginEvent(ServerEventType.PlayerGameConsoleCommand)]
-        private void OnPlayerGameconsoleCommand(Player player, string command, string[] arguments)
-        {
-            Log.Info($"Player {player.Nickname} ({player.UserId}) used command {command}{(arguments.Length != 0 ? $" with arguments {string.Join(", ", arguments)}" : string.Empty)}");
-            this.ProcessCommand(player, command, arguments);
-        }
-
-        [PluginEvent(ServerEventType.ConsoleCommand)]
-        private void OnConsoleCommand(string command, string[] arguments)
-        {
-            Log.Info($"Server used command {command}{(arguments.Length != 0 ? $" with arguments {string.Join(", ", arguments)}" : string.Empty)}");
+            ProcessCommand(player, command, arguments);
         }
 
         [PluginEvent(ServerEventType.PlayerCheaterReport)]
         private void OnPlayerCheaterReport(Player issuer, Player reported, string reason)
         {
-            this.SendCheaterReport(issuer, reported, reason);
-        }
-
-        private async void SendCheaterReport(Player issuer, Player reported, string reason)
-        {
-            string issuerString = FormatUserId(issuer);
-            string reportedString = FormatUserId(reported);
-
-            var response = await new Webhook(this.Config.ReportWebhookLink)
-                .AddMessage((msg) => msg
-                .WithAvatar(this.Config.ReportWebhookAvatar)
-                .WithUsername(this.Config.ReportWebhookUsername)
-                .WithEmbed(embed =>
-                {
-                    embed
-                        .WithAuthor("CHEATER REPORT", null, null, null)
-                        .WithColor(255, 0, 0)
-                        .WithField("Issuer", issuerString, true)
-                        .WithField("Reported", reportedString, true)
-                        .WithField("Server", $"{Server.ServerIpAddress}:{Server.Port}", true)
-                        .WithField("Reason", reason)
-                        .WithCurrentTimestamp();
-                })).Send();
-
-            Log.Debug(response, this.Config.VerboseOutput);
+            SendCheaterReport(issuer, reported, reason);
         }
 
         private void ProcessCommand(Player sender, string command, string[] args)
         {
-            Log.Debug("ProcessCommand", this.Config.VerboseOutput);
+            Log.Debug("ProcessCommand", Config.VerboseOutput);
+            command = command.ToLower();
 
             if (string.IsNullOrWhiteSpace(command))
                 return;
@@ -109,13 +88,18 @@ namespace Mistaken.AdminLogger
 
             if (command.StartsWith("@"))
             {
-                this.SendWebhook("AdminChat", command.Substring(1) + string.Join(" ", args), sender, null);
+                SendWebhook("AdminChat", command.Substring(1), sender, null);
                 return;
             }
 
-            Log.Debug($"Admin: {sender?.Nickname ?? "Console"} Command: {command} {string.Join(" ", args)}", this.Config.VerboseOutput);
+            Log.Debug($"Admin: {sender?.Nickname ?? "Console"} Command: {command} {string.Join(" ", args)}", Config.VerboseOutput);
 
-            switch (command.ToLower())
+            // ZROBIĆ BY WYKRYWAŁO WSZYSTKIE OSOBY A NIE PIERWSZĄ LEPSZĄ
+            Player user = null;
+            if (args.Length > 0 && int.TryParse(args[0].Split('.')[0], out int value))
+                user = Player.Get<Player>(value);
+
+            switch (command)
             {
                 case "$":
                 case "request_data":
@@ -125,23 +109,23 @@ namespace Mistaken.AdminLogger
                     break;
                 case "server_event":
                     if (args.Length == 0)
-                        this.SendWebhook(command.ToLower(), string.Empty, sender, null);
+                        SendWebhook(command, string.Empty, sender, null);
                     else
-                        this.SendWebhook(command.ToLower(), args[0], sender, null);
+                        SendWebhook(command, args[0], sender, null);
                     break;
 
                 case "roundrestart":
                 case "reconnectrs":
                 case "lockdown":
                 case "forcestart":
-                    this.SendWebhook(command.ToLower(), "None", sender, null);
+                    SendWebhook(command, "None", sender, null);
                     break;
 
                 case "goto":
                     if (args.Length == 0)
-                        this.SendWebhook(command.ToLower(), string.Empty, sender, null);
+                        SendWebhook(command, string.Empty, sender, null);
                     else
-                        this.SendWebhook(command.ToLower(), "None", sender, Player.Get<Player>(int.Parse(args[0].Split('.')[0])));
+                        SendWebhook(command, "None", sender, user);
 
                     break;
 
@@ -150,9 +134,9 @@ namespace Mistaken.AdminLogger
                 case "flash":
                 case "grenade":
                     if (args.Length == 0)
-                        this.SendWebhook(command.ToLower(), string.Empty, sender, null);
+                        SendWebhook(command, string.Empty, sender, null);
                     else
-                        this.SendWebhook(command.ToLower(), args[0], sender, Player.Get<Player>(int.Parse(args[0].Split('.')[0])));
+                        SendWebhook(command, args[0], sender, user);
 
                     break;
 
@@ -163,7 +147,7 @@ namespace Mistaken.AdminLogger
                         if (args.Length == 0)
                             break;
 
-                        this.SendWebhook(command.ToLower(), "NONE", sender, Player.Get<Player>(int.Parse(args[0].Split('.')[0])));
+                        SendWebhook(command, "NONE", sender, user);
                     }
 
                     break;
@@ -174,35 +158,32 @@ namespace Mistaken.AdminLogger
                 case "close":
                 case "open":
                     if (args.Length == 0)
-                        this.SendWebhook(command.ToLower(), string.Empty, sender, null);
+                        SendWebhook(command, string.Empty, sender, null);
                     else
-                        this.SendWebhook(command.ToLower(), args[0], sender, null);
+                        SendWebhook(command, args[0], sender, null);
                     break;
 
                 case "doortp":
                     if (args.Length == 0)
-                        this.SendWebhook(command.ToLower(), string.Empty, sender, null);
+                        SendWebhook(command, string.Empty, sender, null);
                     else
-                        this.SendWebhook(command.ToLower(), args[0] + args[1], sender, Player.Get<Player>(int.Parse(args[0].Split('.')[0])));
+                        SendWebhook(command, args[0] + args[1], sender, user);
 
                     break;
 
                 case "roundlock":
-                    this.SendWebhook(command.ToLower(), (!Round.IsLocked).ToString(), sender, null);
+                    SendWebhook(command, (!Round.IsLocked).ToString(), sender, null);
                     break;
 
                 case "lobbylock":
-                    this.SendWebhook(command.ToLower(), (!Round.IsLobbyLocked).ToString(), sender, null);
+                    SendWebhook(command, (!Round.IsLobbyLocked).ToString(), sender, null);
                     break;
 
                 case "pbc":
                     if (args.Length == 0)
-                        this.SendWebhook(command.ToLower(), string.Empty, sender, null);
+                        SendWebhook(command, string.Empty, sender, null);
                     else
-                    {
-                        Player player = Player.Get<Player>(int.Parse(args[0].Split('.')[0]));
-                        this.SendWebhook(command.ToLower(), string.Join(" ", args.Skip(1)), sender, player);
-                    }
+                        SendWebhook(command, string.Join(" ", args.Skip(1)), sender, user);
 
                     break;
 
@@ -210,52 +191,33 @@ namespace Mistaken.AdminLogger
                 case "cassie_silent":
                 case "cassie_sl":
                 case "cassie":
-                    this.SendWebhook(command.ToLower(), string.Join(" ", args), sender, null);
+                    SendWebhook(command, string.Join(" ", args), sender, null);
                     break;
 
                 case "give":
                     if (args.Length == 0)
-                        this.SendWebhook(command.ToLower(), "NONE", sender, null);
+                        SendWebhook(command, "NONE", sender, null);
                     else
-                    {
-                        Player player = null;
-
-                        if (args.Length > 0)
-                            player = Player.Get<Player>(int.Parse(args[0].Split('.')[0]));
-
-                        this.SendWebhook(command.ToLower(), args[0] + " " + (args.Length < 2 ? "NONE" : ((ItemType)int.Parse(args[1])).ToString()), sender, player);
-                    }
+                        SendWebhook(command, args[0] + " " + (args.Length < 2 ? "NONE" : ((ItemType)int.Parse(args[1])).ToString()), sender, user);
 
                     break;
 
                 case "fc":
                 case "forceclass":
                     if (args.Length == 0)
-                        this.SendWebhook(command.ToLower(), "NONE", sender, null);
+                        SendWebhook(command, "NONE", sender, null);
                     else
-                    {
-                        Player player = null;
-
-                        if (args.Length > 0)
-                            player = Player.Get<Player>(int.Parse(args[0].Split('.')[0]));
-
-                        this.SendWebhook(command.ToLower(), args[0] + " " + (args.Length < 2 ? "NONE" : ((RoleTypeId)sbyte.Parse(args[1])).ToString()), sender, player);
-                    }
+                        SendWebhook(command, args[0] + " " + (args.Length < 2 ? "NONE" : ((RoleTypeId)sbyte.Parse(args[1])).ToString()), sender, user);
 
                     break;
 
                 default:
                     if (args.Length == 0)
-                        this.SendWebhook(command.ToLower(), "NONE", sender, null);
+                        SendWebhook(command, "NONE", sender, null);
                     else
                     {
-                        Player player = null;
-
-                        if (args.Length > 0)
-                            player = Player.Get<Player>(int.Parse(args[0].Split('.')[0]));
-
                         string argString = string.Join(" ", args);
-                        this.SendWebhook(command.ToLower(), string.IsNullOrWhiteSpace(argString) ? "NONE" : argString, sender, player);
+                        SendWebhook(command, string.IsNullOrWhiteSpace(argString) ? "NONE" : argString, sender, user);
                     }
 
                     break;
@@ -267,26 +229,40 @@ namespace Mistaken.AdminLogger
             if (sender == null)
                 return;
 
-            string adminString = FormatUserId(sender);
-            string userString = FormatUserId(user);
-
-            var response = await new Webhook(this.Config.WebhookLink)
+            await new Webhook(Config.WebhookLink)
                 .AddMessage((msg) => msg
-                .WithAvatar(this.Config.WebhookAvatar)
-                .WithUsername(this.Config.WebhookUsername)
+                .WithAvatar(Config.WebhookAvatar)
+                .WithUsername(Config.WebhookUsername)
                 .WithEmbed(embed =>
                 {
                     embed
                         .WithAuthor(command == "AdminChat" ? "AdminChat" : $"Command: {command}", null, null, null)
                         .WithColor(255, 0, 0)
-                        .WithField("User", string.IsNullOrWhiteSpace(userString ?? adminString) ? "ADMIN IS NULL" : (userString ?? adminString), true)
-                        .WithField("Admin", string.IsNullOrWhiteSpace(adminString) ? "ADMIN IS NULL" : adminString, true)
+                        .WithField("User", FormatUserId(user), true)
+                        .WithField("Admin", FormatUserId(sender), true)
                         .WithField("Server", $"{Server.ServerIpAddress}:{Server.Port}", true)
-                        .WithField("Arg", string.IsNullOrWhiteSpace(arg) ? "NO ARGS" : arg)
+                        .WithField("Arg", string.IsNullOrWhiteSpace(arg) ? "NONE" : arg)
                         .WithCurrentTimestamp();
                 })).Send();
+        }
 
-            Log.Debug(response, this.Config.VerboseOutput);
+        private async void SendCheaterReport(Player issuer, Player reported, string reason)
+        {
+            await new Webhook(Config.ReportWebhookLink)
+                .AddMessage((msg) => msg
+                .WithAvatar(Config.ReportWebhookAvatar)
+                .WithUsername(Config.ReportWebhookUsername)
+                .WithEmbed(embed =>
+                {
+                    embed
+                        .WithAuthor("CHEATER REPORT", null, null, null)
+                        .WithColor(255, 0, 0)
+                        .WithField("Issuer", FormatUserId(issuer), true)
+                        .WithField("Reported", FormatUserId(reported), true)
+                        .WithField("Server", $"{Server.ServerIpAddress}:{Server.Port}", true)
+                        .WithField("Reason", reason)
+                        .WithCurrentTimestamp();
+                })).Send();
         }
     }
 }
