@@ -21,13 +21,13 @@ namespace Mistaken.AdminLogger
             {
                 List<CodeInstruction> newInstructions = NorthwoodLib.Pools.ListPool<CodeInstruction>.Shared.Rent(instructions);
 
-                int index = newInstructions.FindIndex(x => x.opcode == OpCodes.Endfinally) + 1; // Ldnull
+                int index = newInstructions.FindIndex(x => x.opcode == OpCodes.Starg_S) - 4; // Ldstr
 
                 newInstructions.InsertRange(index, new CodeInstruction[]
                 {
                     new(OpCodes.Call, AccessTools.PropertyGetter(typeof(Plugin), nameof(Plugin.Instance))),
                     new(OpCodes.Ldloc_0), // PlayerCommandSender
-                    new(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(PlayerCommandSender), nameof(PlayerCommandSender.PlayerId))),
+                    new(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(PlayerCommandSender), nameof(PlayerCommandSender.PlayerId))), // Jeśli będą problemy to RH może był null
                     new(OpCodes.Call, AccessTools.FirstMethod(typeof(Player), x =>
                         !x.IsGenericMethod && x.GetParameters().Length > 0 && x.GetParameters()[0].ParameterType == typeof(int))),
                     new(OpCodes.Ldarg_0), // string q
@@ -35,10 +35,7 @@ namespace Mistaken.AdminLogger
                 });
 
                 foreach (var instruction in newInstructions)
-                {
-                    Log.Info(instruction.ToString());
                     yield return instruction;
-                }
 
                 NorthwoodLib.Pools.ListPool<CodeInstruction>.Shared.Return(newInstructions);
             }
