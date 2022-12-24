@@ -69,7 +69,7 @@ internal sealed class Plugin
     }
 
     [UsedImplicitly]
-    [PluginEvent(ServerEventType.PlayerRemoteAdminCommand)]
+    [PluginEvent(ServerEventType.RemoteAdminCommand)]
     private void OnPlayerRemoteAdminCommand(ICommandSender player, string command, string[] arguments)
     {
         ProcessCommand(player, command, arguments);
@@ -202,7 +202,18 @@ internal sealed class Plugin
                 if (args.Length == 0)
                     SendWebhook(command, "NONE", sender, null);
                 else
-                    SendWebhook(command, args[0] + " " + (args.Length < 2 ? "NONE" : ((ItemType)int.Parse(args[1])).ToString()), sender, GetPlayer(args[0]));
+                {
+                    var items = args.Length > 1
+                        ? string.Join(
+                            ", ",
+                            args[1].Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries).Select(
+                                x => Enum.TryParse(x, out ItemType item)
+                                    ? item.ToString()
+                                    : "Error (Unknown Item)"))
+                        : "NONE";
+
+                    SendWebhook(command, args[0] + " " + items, sender, GetPlayer(args[0]));
+                }
 
                 break;
 
@@ -211,7 +222,16 @@ internal sealed class Plugin
                 if (args.Length == 0)
                     SendWebhook(command, "NONE", sender, null);
                 else
-                    SendWebhook(command, args[0] + " " + (args.Length < 2 ? "NONE" : ((RoleTypeId)sbyte.Parse(args[1])).ToString()), sender, GetPlayer(args[0]));
+                {
+                    var role = RoleTypeId.None;
+                    if (args.Length > 1)
+                    {
+                        if (!Enum.TryParse(args[1], out role))
+                            throw new ArgumentException("Invalid roleId: " + args[1], nameof(args) + "[1]");
+                    }
+
+                    SendWebhook(command, args[0] + " " + role, sender, GetPlayer(args[0]));
+                }
 
                 break;
 
