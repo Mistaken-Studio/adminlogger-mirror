@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using CommandSystem;
 using Discord_Webhook;
 using HarmonyLib;
 using JetBrains.Annotations;
@@ -8,6 +9,7 @@ using PluginAPI.Core;
 using PluginAPI.Core.Attributes;
 using PluginAPI.Enums;
 using PluginAPI.Events;
+using RemoteAdmin;
 
 // ReSharper disable IdentifierTypo
 // ReSharper disable StringLiteralTypo
@@ -21,7 +23,7 @@ internal sealed class Plugin
     [PluginConfig]
     public Config Config;
 
-    private static readonly Harmony _harmony = new("mistaken.adminlogger.patch");
+    private static readonly Harmony Harmony = new("mistaken.adminlogger.patch");
 
     private static Player GetPlayer(string arg)
         => int.TryParse(arg.Split('.')[0], out var res) ? Player.Get<Player>(res) : Server.Instance;
@@ -49,14 +51,14 @@ internal sealed class Plugin
     {
         Instance = this;
         EventManager.RegisterEvents(this);
-        _harmony.PatchAll();
+        Harmony.PatchAll();
     }
 
     [UsedImplicitly]
     [PluginUnload]
     private void Unload()
     {
-        _harmony.UnpatchAll();
+        Harmony.UnpatchAll();
     }
 
     [UsedImplicitly]
@@ -68,7 +70,7 @@ internal sealed class Plugin
 
     [UsedImplicitly]
     [PluginEvent(ServerEventType.PlayerRemoteAdminCommand)]
-    private void OnPlayerRemoteAdminCommand(Player player, string command, string[] arguments)
+    private void OnPlayerRemoteAdminCommand(ICommandSender player, string command, string[] arguments)
     {
         ProcessCommand(player, command, arguments);
     }
@@ -78,6 +80,15 @@ internal sealed class Plugin
     private void OnPlayerCheaterReport(Player issuer, Player reported, string reason)
     {
         SendCheaterReport(issuer, reported, reason);
+    }
+
+    private void ProcessCommand(ICommandSender commandSender, string command, string[] args)
+    {
+        var sender = commandSender is PlayerCommandSender playerCommandSender
+            ? Player.Get(playerCommandSender!.ReferenceHub)
+            : Server.Instance;
+
+        ProcessCommand(sender, command, args);
     }
 
     private void ProcessCommand(Player sender, string command, string[] args)
@@ -249,7 +260,7 @@ internal sealed class Plugin
             .WithEmbed(embed =>
             {
                 embed
-                    .WithAuthor("CHEATER REPORT", null, null, null)
+                    .WithAuthor("CHEATER REPORT")
                     .WithColor(255, 0, 0)
                     .WithField("Issuer", FormatUserId(issuer), true)
                     .WithField("Reported", FormatUserId(reported), true)
