@@ -296,7 +296,7 @@ internal sealed class Plugin
         days -= months * 30;
 
         Embed embed = new();
-        embed.WithAuthor($"User {(duration > 0 ? "Banned" : "Kicked")}!", "https://staff.mistaken.pl/#bans.php");
+        embed.WithAuthor($"User {(duration > 0 ? "Banned" : "Kicked")}!");
         embed.WithField("User", FormatUserId(target), true);
         embed.WithField("Admin", FormatUserId(issuer), true);
         embed.WithField("Reason", reason);
