@@ -19,7 +19,7 @@ internal sealed class Plugin
 {
     public static Plugin Instance { get; private set; }
 
-    [UsedImplicitly]
+    // [UsedImplicitly]
     [PluginConfig]
     public Config Config;
 
@@ -207,7 +207,7 @@ internal sealed class Plugin
                         ? string.Join(
                             ", ",
                             args[1].Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries).Select(
-                                x => Enum.TryParse(x, out ItemType item)
+                                x => Enum.TryParse(x, true, out ItemType item)
                                     ? item.ToString()
                                     : "Error (Unknown Item)"))
                         : "NONE";
@@ -226,7 +226,7 @@ internal sealed class Plugin
                     var role = RoleTypeId.None;
                     if (args.Length > 1)
                     {
-                        if (!Enum.TryParse(args[1], out role))
+                        if (!Enum.TryParse(args[1], true, out role))
                             throw new ArgumentException("Invalid roleId: " + args[1], nameof(args) + "[1]");
                     }
 
