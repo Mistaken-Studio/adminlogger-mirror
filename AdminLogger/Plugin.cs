@@ -77,9 +77,27 @@ internal sealed class Plugin
 
     [UsedImplicitly]
     [PluginEvent(ServerEventType.PlayerCheaterReport)]
-    private void OnPlayerCheaterReport(Player issuer, Player reported, string reason)
+    private void OnPlayerCheaterReport(Player issuer, Player target, string reason)
     {
-        SendCheaterReport(issuer, reported, reason);
+        SendCheaterReport(issuer, target, reason);
+    }
+
+    [UsedImplicitly]
+    [PluginEvent(ServerEventType.PlayerBanned)]
+    private void OnPlayerBanned(Player target, ICommandSender issuer, string reason, long duration)
+    {
+        var sender = issuer is PlayerCommandSender playerCommandSender
+            ? Player.Get(playerCommandSender!.ReferenceHub)
+            : Server.Instance;
+
+        SendKickBanWebhook(sender, target, reason, duration);
+    }
+
+    [UsedImplicitly]
+    [PluginEvent(ServerEventType.PlayerKicked)]
+    private void OnPlayerKicked(Player target, Player issuer, string reason)
+    {
+        SendKickBanWebhook(issuer, target, reason, 0);
     }
 
     private void ProcessCommand(ICommandSender commandSender, string command, string[] args)
@@ -104,7 +122,7 @@ internal sealed class Plugin
 
         if (command.StartsWith("@"))
         {
-            SendWebhook("AdminChat", command.Substring(1), sender, null);
+            SendCommandWebhook("AdminChat", command.Substring(1), sender, null);
             return;
         }
 
@@ -119,21 +137,21 @@ internal sealed class Plugin
             case "confirm":
                 break;
             case "server_event":
-                SendWebhook(command, args.Length == 0 ? string.Empty : args[0], sender, null);
+                SendCommandWebhook(command, args.Length == 0 ? string.Empty : args[0], sender, null);
                 break;
 
             case "roundrestart":
             case "reconnectrs":
             case "lockdown":
             case "forcestart":
-                SendWebhook(command, "None", sender, null);
+                SendCommandWebhook(command, "None", sender, null);
                 break;
 
             case "goto":
                 if (args.Length == 0)
                     break;
 
-                SendWebhook(command, "None", sender, GetPlayer(args[0]));
+                SendCommandWebhook(command, "None", sender, GetPlayer(args[0]));
                 break;
 
             case "ball":
@@ -141,9 +159,9 @@ internal sealed class Plugin
             case "flash":
             case "grenade":
                 if (args.Length == 0)
-                    SendWebhook(command, string.Empty, sender, null);
+                    SendCommandWebhook(command, string.Empty, sender, null);
                 else
-                    SendWebhook(command, args[0], sender, GetPlayer(args[0]));
+                    SendCommandWebhook(command, args[0], sender, GetPlayer(args[0]));
 
                 break;
 
@@ -154,7 +172,7 @@ internal sealed class Plugin
                     if (args.Length == 0)
                         break;
 
-                    SendWebhook(command, "NONE", sender, GetPlayer(args[0]));
+                    SendCommandWebhook(command, "NONE", sender, GetPlayer(args[0]));
                 }
 
                 break;
@@ -164,30 +182,30 @@ internal sealed class Plugin
             case "lock":
             case "close":
             case "open":
-                SendWebhook(command, args.Length == 0 ? string.Empty : args[0], sender, null);
+                SendCommandWebhook(command, args.Length == 0 ? string.Empty : args[0], sender, null);
                 break;
 
             case "doortp":
                 if (args.Length == 0)
-                    SendWebhook(command, string.Empty, sender, null);
+                    SendCommandWebhook(command, string.Empty, sender, null);
                 else if (args.Length > 1)
-                    SendWebhook(command, args[0] + args[1], sender, GetPlayer(args[0]));
+                    SendCommandWebhook(command, args[0] + args[1], sender, GetPlayer(args[0]));
 
                 break;
 
             case "roundlock":
-                SendWebhook(command, (!Round.IsLocked).ToString(), sender, null);
+                SendCommandWebhook(command, (!Round.IsLocked).ToString(), sender, null);
                 break;
 
             case "lobbylock":
-                SendWebhook(command, (!Round.IsLobbyLocked).ToString(), sender, null);
+                SendCommandWebhook(command, (!Round.IsLobbyLocked).ToString(), sender, null);
                 break;
 
             case "pbc":
                 if (args.Length == 0)
-                    SendWebhook(command, string.Empty, sender, null);
+                    SendCommandWebhook(command, string.Empty, sender, null);
                 else
-                    SendWebhook(command, string.Join(" ", args.Skip(1)), sender, GetPlayer(args[0]));
+                    SendCommandWebhook(command, string.Join(" ", args.Skip(1)), sender, GetPlayer(args[0]));
 
                 break;
 
@@ -195,12 +213,12 @@ internal sealed class Plugin
             case "cassie_silent":
             case "cassie_sl":
             case "cassie":
-                SendWebhook(command, string.Join(" ", args), sender, null);
+                SendCommandWebhook(command, string.Join(" ", args), sender, null);
                 break;
 
             case "give":
                 if (args.Length == 0)
-                    SendWebhook(command, "NONE", sender, null);
+                    SendCommandWebhook(command, "NONE", sender, null);
                 else
                 {
                     var items = args.Length > 1
@@ -212,7 +230,7 @@ internal sealed class Plugin
                                     : "Error (Unknown Item)"))
                         : "NONE";
 
-                    SendWebhook(command, args[0] + " " + items, sender, GetPlayer(args[0]));
+                    SendCommandWebhook(command, args[0] + " " + items, sender, GetPlayer(args[0]));
                 }
 
                 break;
@@ -220,7 +238,7 @@ internal sealed class Plugin
             case "fc":
             case "forceclass":
                 if (args.Length == 0)
-                    SendWebhook(command, "NONE", sender, null);
+                    SendCommandWebhook(command, "NONE", sender, null);
                 else
                 {
                     var role = RoleTypeId.None;
@@ -230,25 +248,25 @@ internal sealed class Plugin
                             throw new ArgumentException("Invalid roleId: " + args[1], nameof(args) + "[1]");
                     }
 
-                    SendWebhook(command, args[0] + " " + role, sender, GetPlayer(args[0]));
+                    SendCommandWebhook(command, args[0] + " " + role, sender, GetPlayer(args[0]));
                 }
 
                 break;
 
             default:
                 if (args.Length == 0)
-                    SendWebhook(command, "NONE", sender, null);
+                    SendCommandWebhook(command, "NONE", sender, null);
                 else
                 {
                     string argString = string.Join(" ", args);
-                    SendWebhook(command, string.IsNullOrWhiteSpace(argString) ? "NONE" : argString, sender, GetPlayer(args[0]));
+                    SendCommandWebhook(command, string.IsNullOrWhiteSpace(argString) ? "NONE" : argString, sender, GetPlayer(args[0]));
                 }
 
                 break;
         }
     }
 
-    private async void SendWebhook(string command, string arg, Player sender, Player user)
+    private async void SendCommandWebhook(string command, string arg, Player sender, Player user)
     {
         if (sender == null)
             return;
@@ -270,6 +288,35 @@ internal sealed class Plugin
             })).Send();
     }
 
+    private async void SendKickBanWebhook(Player issuer, Player target, string reason, long duration)
+    {
+        var banDur = TimeSpan.FromSeconds(duration);
+        var days = banDur.Days;
+        var months = (days - (days % 30)) / 30;
+        days -= months * 30;
+
+        Embed embed = new();
+        embed.WithAuthor($"User {(duration > 0 ? "Banned" : "Kicked")}!", "https://staff.mistaken.pl/#bans.php");
+        embed.WithField("User", FormatUserId(target), true);
+        embed.WithField("Admin", FormatUserId(issuer), true);
+        embed.WithField("Reason", reason);
+
+        if (duration > 0)
+        {
+            embed.WithField("Duration", $"{months:00}M {days:00}d {banDur.Hours:00}h {banDur.Minutes:00}m", true);
+            embed.WithField("Until", (DateTime.Now.AddSeconds(duration)).ToString("yyyy-MM-dd HH:mm:ss"), true);
+        }
+        else
+            embed.WithField("Duration", "KICK", true);
+
+        embed.WithField("Server", Server.Port == 7778 ? "#2 PL RP" : "#3 Non RP", true);
+
+        embed.WithColor(255, 0, 0);
+        embed.WithFooter($"{DateTime.Now:dd:MM:yyyy} • {DateTime.Now:HH:mm:ss}");
+        
+        await new Webhook("https://discord.com/api/webhooks/897193757294870630/F1dDKmEhTBurdMRBWgNPNKoH70V4AKKwDowBFj8950YutR7ChMrYvj3VtPTJ-b7vXYfL")
+            .AddMessage(msg => msg.Embeds.Add(embed)).Send();
+    }
 
     private async void SendCheaterReport(Player issuer, Player reported, string reason)
     {
