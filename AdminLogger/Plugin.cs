@@ -95,13 +95,9 @@ internal sealed class Plugin
 
     [UsedImplicitly]
     [PluginEvent(ServerEventType.PlayerKicked)]
-    private void OnPlayerKicked(Player target, ICommandSender issuer, string reason)
+    private void OnPlayerKicked(Player target, Player issuer, string reason)
     {
-        var sender = issuer is PlayerCommandSender playerCommandSender
-            ? Player.Get(playerCommandSender!.ReferenceHub)
-            : Server.Instance;
-
-        SendKickBanWebhook(sender, target, reason, 0);
+        SendKickBanWebhook(issuer, target, reason, 0);
     }
 
     private void ProcessCommand(ICommandSender commandSender, string command, string[] args)
