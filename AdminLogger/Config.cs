@@ -25,4 +25,6 @@ internal sealed class Config
     public string ReportWebhookUsername { get; set; } = null;
 
     public string ReportWebhookAvatar { get; set; } = null;
+
+    public string KickBansWebhookLink { get; set; } = null;
 }

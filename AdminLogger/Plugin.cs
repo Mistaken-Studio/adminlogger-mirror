@@ -294,28 +294,28 @@ internal sealed class Plugin
         var days = banDur.Days;
         var months = (days - (days % 30)) / 30;
         days -= months * 30;
-
-        var embed = new Embed()
-            .WithAuthor($"User {(duration > 0 ? "Banned" : "Kicked")}!")
-            .WithField("User", FormatUserId(target), true)
-            .WithField("Admin", FormatUserId(issuer), true)
-            .WithField("Reason", reason)
-
-            .WithField("Server", Server.Port == 7778 ? "#2 PL RP" : "#3 Non RP", true)
-
-            .WithColor(255, 0, 0)
-            .WithFooter($"{DateTime.Now:dd:MM:yyyy} • {DateTime.Now:HH:mm:ss}");
-
-        if (duration > 0)
-        {
-            embed.WithField("Duration", $"{months:00}M {days:00}d {banDur.Hours:00}h {banDur.Minutes:00}m", true)
-                .WithField("Until", (DateTime.Now.AddSeconds(duration)).ToString("yyyy-MM-dd HH:mm:ss"), true);
-        }
-        else
-            embed.WithField("Duration", "KICK", true);
         
-        await new Webhook("https://discord.com/api/webhooks/897193757294870630/F1dDKmEhTBurdMRBWgNPNKoH70V4AKKwDowBFj8950YutR7ChMrYvj3VtPTJ-b7vXYfL")
-            .AddMessage(msg => msg.Embeds.Add(embed)).Send();
+        await new Webhook(Config.KickBansWebhookLink)
+            .AddMessage(msg => msg
+            .WithEmbed(embed =>
+            {
+                embed
+                    .WithAuthor($"User {(duration > 0 ? "Banned" : "Kicked")}!")
+                    .WithField("User", FormatUserId(target), true)
+                    .WithField("Admin", FormatUserId(issuer), true)
+                    .WithField("Reason", reason)
+                    .WithField("Server", Server.Port == 7778 ? "#2 PL RP" : "#3 Non RP", true)
+                    .WithColor(255, 0, 0)
+                    .WithFooter($"{DateTime.Now:dd:MM:yyyy} • {DateTime.Now:HH:mm:ss}");
+
+                if (duration > 0)
+                {
+                    embed.WithField("Duration", $"{months:00}M {days:00}d {banDur.Hours:00}h {banDur.Minutes:00}m", true)
+                        .WithField("Until", (DateTime.Now.AddSeconds(duration)).ToString("yyyy-MM-dd HH:mm:ss"), true);
+                }
+                else
+                    embed.WithField("Duration", "KICK", true);
+            })).Send();
     }
 
     private async void SendCheaterReport(Player issuer, Player reported, string reason)
