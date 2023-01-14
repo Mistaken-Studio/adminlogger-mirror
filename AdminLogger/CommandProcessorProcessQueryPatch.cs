@@ -55,7 +55,7 @@ internal static class CommandProcessorProcessQueryPatch
                 new CodeInstruction(OpCodes.Pop).WithLabels(label),
                 new CodeInstruction(
                     OpCodes.Call,
-                    AccessTools.PropertyGetter(typeof(Server), nameof(Server.Instance))),
+                    AccessTools.PropertyGetter(typeof(ReferenceHub), nameof(ReferenceHub.HostHub))),
                 new CodeInstruction(OpCodes.Ldarg_0).WithLabels(label2), // string q
                 new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Plugin), "OnPlayerAdminChat")),
             });

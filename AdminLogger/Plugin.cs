@@ -62,10 +62,10 @@ internal sealed class Plugin
     }
 
     [UsedImplicitly]
-    private void OnPlayerAdminChat(Player player, string query)
+    private void OnPlayerAdminChat(ReferenceHub player, string query)
     {
         Log.Debug(query, Config.VerboseOutput);
-        ProcessCommand(player, query, Array.Empty<string>());
+        ProcessCommand(Player.Get(player), query, Array.Empty<string>());
     }
 
     [UsedImplicitly]
