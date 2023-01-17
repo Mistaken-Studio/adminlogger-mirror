@@ -1,18 +1,8 @@
-﻿// -----------------------------------------------------------------------
-// <copyright file="Config.cs" company="Mistaken">
-// Copyright (c) Mistaken. All rights reserved.
-// </copyright>
-// -----------------------------------------------------------------------
+﻿namespace Mistaken.AdminLogger;
 
-using JetBrains.Annotations;
-
-// ReSharper disable IdentifierTypo
-namespace Mistaken.AdminLogger;
-
-[UsedImplicitly]
 internal sealed class Config
 {
-    public bool VerboseOutput { get; set; } = false;
+    public bool Debug { get; set; } = false;
 
     public string WebhookLink { get; set; } = null;
 
