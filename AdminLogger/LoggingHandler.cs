@@ -25,7 +25,7 @@ internal sealed class LoggingHandler
     }
 
     private static Player GetPlayer(string arg)
-    => int.TryParse(arg.Split('.')[0], out var res) ? Player.Get<Player>(res) : Server.Instance;
+        => int.TryParse(arg.Split('.')[0], out var res) ? Player.Get<Player>(res) : Server.Instance;
 
     private static string FormatUserId(Player player)
     {
@@ -225,7 +225,7 @@ internal sealed class LoggingHandler
                     .WithColor(255, 0, 0)
                     .WithField("User", FormatUserId(user), true)
                     .WithField("Admin", FormatUserId(sender), true)
-                    .WithField("Server", $"{Server.ServerIpAddress}:{Server.Port}", true)
+                    .WithField("Server", API.Extensions.MiscellaneousMethods.GetServerName(), true)
                     .WithField("Arg", string.IsNullOrWhiteSpace(arg) ? "NONE" : arg)
                     .WithCurrentTimestamp();
             })).Send();
@@ -247,7 +247,7 @@ internal sealed class LoggingHandler
                     .WithField("User", FormatUserId(target), true)
                     .WithField("Admin", FormatUserId(issuer), true)
                     .WithField("Reason", reason)
-                    .WithField("Server", Server.Port == 7778 ? "#2 PL RP" : "#3 Non RP", true)
+                    .WithField("Server", API.Extensions.MiscellaneousMethods.GetServerName(), true)
                     .WithColor(255, 0, 0)
                     .WithFooter($"{DateTime.Now:dd:MM:yyyy} • {DateTime.Now:HH:mm:ss}");
 
